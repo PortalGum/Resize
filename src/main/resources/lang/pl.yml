@@ -1,0 +1,24 @@
+only-player: "&cTa komenda może być używana tylko w grze."
+no-permission: "&cNie masz uprawnień."
+reload-success: "&aKonfiguracja pluginu została przeładowana."
+
+usage-player: "&cUżycie: /resize <rozmiar>"
+usage-admin: "&cUżycie: /resize <rozmiar> [gracz]"
+not-number: "&cRozmiar musi być liczbą."
+player-not-found: "&cNie znaleziono gracza."
+
+size-limit: "&cRozmiar musi mieścić się między &4{min}&c a &4{max}"
+cooldown: "&cPoczekaj &4{time}&c sek."
+already-this-size: "&eMasz już taki rozmiar."
+world-disabled: "&cNie możesz używać tej komendy w tym świecie."
+
+no-scale-support: "&cBłąd: Metody zmiany rozmiaru są niedostępne. Użyj Paper 1.21+"
+
+self-resize: "&aTwój rozmiar został zmieniony na &2{size}"
+other-resize: "&aRozmiar gracza &2{player}&a został zmieniony na &2{size}"
+target-message: "&eAdministrator zmienił twój rozmiar na &2{size}"
+no-permission-target: "&cNie masz uprawnień do zmiany rozmiaru innych graczy."
+
+reset-receive: "&eRozmiar został zresetowany po otrzymaniu obrażeń."
+reset-deal: "&eRozmiar został zresetowany po zadaniu obrażeń."
+world-size-reset: "&eNie możesz mieć zmienionego rozmiaru w tym świecie. Twój rozmiar został zresetowany."

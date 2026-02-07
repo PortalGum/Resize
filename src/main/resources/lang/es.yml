@@ -1,0 +1,24 @@
+only-player: "&cEste comando solo puede usarse en el juego."
+no-permission: "&cNo tienes permiso."
+reload-success: "&aLa configuración del plugin ha sido recargada."
+
+usage-player: "&cUso: /resize <tamaño>"
+usage-admin: "&cUso: /resize <tamaño> [jugador]"
+not-number: "&cEl tamaño debe ser un número."
+player-not-found: "&cJugador no encontrado."
+
+size-limit: "&cEl tamaño debe estar entre &4{min}&c y &4{max}"
+cooldown: "&cEspera &4{time}&c seg."
+already-this-size: "&eYa tienes ese tamaño."
+world-disabled: "&cNo puedes usar este comando en este mundo."
+
+no-scale-support: "&cError: Los métodos para cambiar el tamaño no están disponibles. Usa Paper 1.21+"
+
+self-resize: "&aTu tamaño ha sido cambiado a &2{size}"
+other-resize: "&aEl tamaño del jugador &2{player}&a ha sido cambiado a &2{size}"
+target-message: "&eUn administrador cambió tu tamaño a &2{size}"
+no-permission-target: "&cNo tienes permiso para cambiar el tamaño de otros jugadores."
+
+reset-receive: "&eEl tamaño se restableció al recibir daño."
+reset-deal: "&eEl tamaño se restableció al infligir daño."
+world-size-reset: "&eNo puedes tener un tamaño modificado en este mundo. Tu tamaño ha sido restablecido."

@@ -1,0 +1,24 @@
+only-player: "&cThis command can only be used in-game."
+no-permission: "&cYou don't have permission."
+reload-success: "&aConfiguration reloaded."
+
+usage-player: "&cUsage: /resize <size>"
+usage-admin: "&cUsage: /resize <size> [player]"
+not-number: "&cSize must be a number."
+player-not-found: "&cPlayer not found."
+
+size-limit: "&cSize must be between &4{min}&c and &4{max}"
+cooldown: "&cWait &4{time}&c seconds."
+already-this-size: "&eYou are already this size."
+world-disabled: "&cYou cannot use this command in this world."
+
+no-scale-support: "&cError: Scale attribute not supported. Use Paper 1.21+"
+
+self-resize: "&aYour size changed to &2{size}"
+other-resize: "&aPlayer &2{player}&a size changed to &2{size}"
+target-message: "&eAdmin changed your size to &2{size}"
+no-permission-target: "&cYou don't have permission to change other players' size."
+
+reset-receive: "&eYour size was reset because you took damage."
+reset-deal: "&eYour size was reset because you dealt damage."
+world-size-reset: "&eYou cannot have a modified size in this world. Your size has been reset."

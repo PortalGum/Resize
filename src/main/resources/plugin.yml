@@ -1,0 +1,23 @@
+name: Resize
+version: 1.0
+main: com.resize.Resize
+author: portal_gum
+api-version: 1.20
+
+commands:
+  resize:
+    usage: /resize <size> [player]
+    description: allows changing the player’s size
+
+permissions:
+  resize.resize:
+    description: allows using the /resize command
+    default: true
+
+  resize.admin:
+    description: administrator permission (no limits)
+    default: op
+
+  resize.reload:
+    description: allows reloading the plugin configuration
+    default: op
