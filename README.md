@@ -19,8 +19,8 @@ Command:
 
 Decimal values are supported (`0.6`, `1.2`, `1.6`, etc.).
 
-![My Project 2026 02 08_03 12 12 (2) (1) (2) (1)](https://github.com/user-attachments/assets/503080b4-bf77-41f2-9026-b3c7489a646f)
 
+![resize_sizechange (1)](https://github.com/user-attachments/assets/4b4366c0-e06a-4213-9203-3adf045bea8b)
 
 ---
 
@@ -35,6 +35,8 @@ animation:
 ````
 
 Makes size changes **smooth and visually pleasing**.
+
+![resize_gif (1)](https://github.com/user-attachments/assets/75064299-9c3d-4f4c-bb91-8332c0fff750)
 
 ---
 
