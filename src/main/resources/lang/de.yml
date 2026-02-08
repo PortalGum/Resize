@@ -10,6 +10,7 @@ player-not-found: "&cSpieler nicht gefunden."
 size-limit: "&cDie Größe muss zwischen &4{min}&c und &4{max} liegen"
 cooldown: "&cWarte &4{time}&c Sek."
 already-this-size: "&eDu hast bereits diese Größe."
+player-already-this-size: "&eDer Spieler &#A7973C{player} &ehat bereits diese Größe."
 world-disabled: "&cDieser Befehl kann in dieser Welt nicht verwendet werden."
 
 no-scale-support: "&cFehler: Methoden zur Größenänderung sind nicht verfügbar. Verwende Paper 1.21+"

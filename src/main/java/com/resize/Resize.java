@@ -1,7 +1,7 @@
 package com.resize;
 
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.command.Command;
@@ -20,6 +20,8 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import java.io.File;
 import java.util.*;
@@ -227,9 +229,19 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         }
 
         if (Math.abs(scale.getBaseValue() - size) < 0.001) {
-            player.sendMessage(msg("already-this-size"));
+
+            if (target == player) {
+                player.sendMessage(msg("already-this-size"));
+            } else {
+                player.sendMessage(
+                        msg("player-already-this-size")
+                                .replace("{player}", target.getName())
+                );
+            }
+
             return true;
         }
+
 
 
         boolean animation = getConfig().getBoolean("animation.enabled", true);
@@ -336,9 +348,24 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         return Collections.emptyList();
     }
 
-    private String color(String text) {
-        return ChatColor.translateAlternateColorCodes('&', text);
+    private static final Pattern HEX_PATTERN =
+            Pattern.compile("&#([A-Fa-f0-9]{6})");
+
+    private String g(String text) {
+        if (text == null) return "";
+
+        Matcher matcher = HEX_PATTERN.matcher(text);
+        StringBuffer buffer = new StringBuffer();
+
+        while (matcher.find()) {
+            ChatColor color = ChatColor.of("#" + matcher.group(1));
+            matcher.appendReplacement(buffer, color.toString());
+        }
+
+        matcher.appendTail(buffer);
+        return ChatColor.translateAlternateColorCodes('&', buffer.toString());
     }
+
 
     @EventHandler
     public void onDamage(EntityDamageEvent event) {

@@ -10,6 +10,7 @@ player-not-found: "&cPlayer not found."
 size-limit: "&cSize must be between &4{min}&c and &4{max}"
 cooldown: "&cWait &4{time}&c seconds."
 already-this-size: "&eYou are already this size."
+player-already-this-size: "&ePlayer &#A7973C{player} &eis already this size."
 world-disabled: "&cYou cannot use this command in this world."
 
 no-scale-support: "&cError: Scale attribute not supported. Use Paper 1.21+"
