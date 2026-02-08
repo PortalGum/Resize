@@ -351,7 +351,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
     private static final Pattern HEX_PATTERN =
             Pattern.compile("&#([A-Fa-f0-9]{6})");
 
-    private String g(String text) {
+    private String color(String text) {
         if (text == null) return "";
 
         Matcher matcher = HEX_PATTERN.matcher(text);
