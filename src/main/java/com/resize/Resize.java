@@ -10,6 +10,8 @@ import org.bukkit.command.TabExecutor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -20,12 +22,25 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+
+import net.luckperms.api.LuckPerms;
+import net.luckperms.api.LuckPermsProvider;
+
+import com.sk89q.worldguard.WorldGuard;
+import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
+import com.sk89q.worldguard.protection.flags.Flag;
+import com.sk89q.worldguard.protection.flags.BooleanFlag;
+import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
+import com.sk89q.worldguard.protection.regions.RegionQuery;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldguard.protection.ApplicableRegionSet;
 
 
 public class Resize extends JavaPlugin implements TabExecutor, Listener {
@@ -34,13 +49,20 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
     private final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitRunnable> animationTasks = new ConcurrentHashMap<>();
     private final Set<UUID> animating = ConcurrentHashMap.newKeySet();
+    private final Map<UUID, Boolean> resizeRegionCache = new HashMap<>();
     private String msg(String path) {
         String prefix = color(getConfig().getString("prefix", ""));
         String message = lang.getString(path, "&cMissing lang key: " + path);
         return prefix + color(message);
     }
+    private String msgNoPrefix(String path) {
+        String message = lang.getString(path, "&cMissing lang key: " + path);
+        return color(message);
+    }
 
     private FileConfiguration lang;
+    private BooleanFlag RESIZE_FLAG;
+    private boolean worldGuardEnabled = false;
 
 
     @Override
@@ -58,6 +80,13 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         getCommand("resize").setExecutor(this);
         getCommand("resize").setTabCompleter(this);
         Bukkit.getPluginManager().registerEvents(this, this);
+
+        if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
+            worldGuardEnabled = true;
+            getLogger().info("WorldGuard detected. Resize flag support enabled.");
+        } else {
+            getLogger().info("WorldGuard not found. Resize flag support disabled.");
+        }
     }
 
     private void loadLang() {
@@ -137,6 +166,71 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             return true;
         }
 
+        if (args.length >= 1 && args[0].equalsIgnoreCase("info")) {
+
+            if (!(sender instanceof Player viewer)) {
+                sender.sendMessage(msg("only-player"));
+                return true;
+            }
+
+            if (!viewer.hasPermission("resize.info") && !viewer.hasPermission("resize.admin")) {
+                viewer.sendMessage(msg("no-permission"));
+                return true;
+            }
+
+            Player target = viewer;
+
+            if (args.length == 2) {
+
+                if (!viewer.hasPermission("resize.info.other") && !viewer.hasPermission("resize.admin")) {
+                    viewer.sendMessage(msg("no-permission-target"));
+                    return true;
+                }
+
+                target = Bukkit.getPlayer(args[1]);
+
+                if (target == null) {
+                    viewer.sendMessage(msg("player-not-found"));
+                    return true;
+                }
+            }
+
+            AttributeInstance scale = target.getAttribute(SCALE_ATTRIBUTE);
+            if (scale == null) {
+                viewer.sendMessage(msg("no-scale-support"));
+                return true;
+            }
+
+            double[] limits = getGroupLimits(target);
+            boolean isAdmin = target.hasPermission("resize.admin");
+
+            viewer.sendMessage(color("&8&m-------------------------"));
+
+            if (viewer != target) {
+                viewer.sendMessage(msgNoPrefix("info-player")
+                        .replace("{player}", target.getName()));
+            } else {
+                viewer.sendMessage(msgNoPrefix("info-self"));
+            }
+
+            viewer.sendMessage(msgNoPrefix("info-current")
+                    .replace("{size}", String.valueOf(scale.getBaseValue())));
+
+            if (isAdmin) {
+                viewer.sendMessage(msgNoPrefix("info-min-unlimited"));
+                viewer.sendMessage(msgNoPrefix("info-max-unlimited"));
+            } else {
+                viewer.sendMessage(msgNoPrefix("info-min")
+                        .replace("{min}", String.valueOf(limits[0])));
+                viewer.sendMessage(msgNoPrefix("info-max")
+                        .replace("{max}", String.valueOf(limits[1])));
+            }
+
+            viewer.sendMessage(color("&8&m-------------------------"));
+
+            return true;
+        }
+
         boolean isAdmin = player.hasPermission("resize.admin");
 
         if (args.length < 1) {
@@ -189,12 +283,18 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             return true;
         }
 
+        if (!isAdmin && !isResizeAllowed(target)) {
+            player.sendMessage(msg("region-disabled"));
+            return true;
+        }
+
         // limitation
         if (!isAdmin) {
 
             // size limits
-            double minSize = getConfig().getDouble("scale.min", 0.6);
-            double maxSize = getConfig().getDouble("scale.max", 1.6);
+            double[] limits = getGroupLimits(player);
+            double minSize = limits[0];
+            double maxSize = limits[1];
 
             if (size < minSize || size > maxSize) {
                 player.sendMessage(msg("size-limit")
@@ -324,12 +424,20 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         if (args.length == 1) {
             List<String> list = new ArrayList<>();
 
+            list.add("info");
+
             if (sender.hasPermission("resize.reload")) {
                 list.add("reload");
             }
 
             double minSize = getConfig().getDouble("scale.min", 0.6);
             double maxSize = getConfig().getDouble("scale.max", 1.6);
+
+            if (sender instanceof Player p && !p.hasPermission("resize.admin")) {
+                double[] limits = getGroupLimits(p);
+                minSize = limits[0];
+                maxSize = limits[1];
+            }
 
             list.add(String.valueOf(minSize));
             list.add(String.valueOf(maxSize));
@@ -347,6 +455,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
         return Collections.emptyList();
     }
+
 
     private static final Pattern HEX_PATTERN =
             Pattern.compile("&#([A-Fa-f0-9]{6})");
@@ -524,5 +633,155 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         SCALE_ATTRIBUTE = null;
         getLogger().severe("Scale attribute is not supported on this server version!");
     }
+
+    private String getPrimaryGroup(Player player) {
+        try {
+            LuckPerms api = LuckPermsProvider.get();
+            return api.getUserManager()
+                    .getUser(player.getUniqueId())
+                    .getPrimaryGroup();
+        } catch (Exception e) {
+            return "default";
+        }
+    }
+
+
+    private double[] getGroupLimits(Player player) {
+
+        double globalMin = getConfig().getDouble("scale.min", 0.6);
+        double globalMax = getConfig().getDouble("scale.max", 1.6);
+
+        if (player.hasPermission("resize.admin")) {
+            return new double[]{globalMin, globalMax};
+        }
+
+        if (!getConfig().getBoolean("group-limits.enabled", false)) {
+            return new double[]{globalMin, globalMax};
+        }
+
+        String group = getPrimaryGroup(player);
+
+        if (group == null) {
+            return new double[]{globalMin, globalMax};
+        }
+
+        String path = "group-limits." + group;
+
+        if (!getConfig().contains(path)) {
+            return new double[]{globalMin, globalMax};
+        }
+
+        double min = getConfig().contains(path + ".min")
+                ? getConfig().getDouble(path + ".min")
+                : globalMin;
+
+        double max = getConfig().contains(path + ".max")
+                ? getConfig().getDouble(path + ".max")
+                : globalMax;
+
+        return new double[]{min, max};
+    }
+
+    @Override
+    public void onLoad() {
+
+        if (getServer().getPluginManager().getPlugin("WorldGuard") == null) {
+            return;
+        }
+
+        try {
+            FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
+
+            BooleanFlag flag = new BooleanFlag("resize");
+            registry.register(flag);
+            RESIZE_FLAG = flag;
+
+            getLogger().info("WorldGuard flag registered: resize");
+
+        } catch (Exception e) {
+
+            Flag<?> existing = WorldGuard.getInstance()
+                    .getFlagRegistry()
+                    .get("resize");
+
+            if (existing instanceof BooleanFlag) {
+                RESIZE_FLAG = (BooleanFlag) existing;
+                getLogger().info("Using existing WorldGuard flag: resize");
+            }
+        }
+    }
+
+    private boolean isResizeAllowed(Player player) {
+
+        if (!worldGuardEnabled || RESIZE_FLAG == null) {
+            return true;
+        }
+
+        if (player.hasPermission("resize.admin")) {
+            return true;
+        }
+
+        RegionContainer container = WorldGuard.getInstance()
+                .getPlatform()
+                .getRegionContainer();
+
+        RegionQuery query = container.createQuery();
+
+        ApplicableRegionSet regions = query.getApplicableRegions(
+                BukkitAdapter.adapt(player.getLocation())
+        );
+
+        Boolean result = regions.queryValue(
+                WorldGuardPlugin.inst().wrapPlayer(player),
+                RESIZE_FLAG
+        );
+
+        if (result == null) {
+            return true;
+        }
+
+        return result;
+    }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+
+        Player player = event.getPlayer();
+
+        if (!worldGuardEnabled || RESIZE_FLAG == null) return;
+        if (player.hasPermission("resize.admin")) return;
+
+        if (event.getFrom().getBlockX() == event.getTo().getBlockX()
+                && event.getFrom().getBlockY() == event.getTo().getBlockY()
+                && event.getFrom().getBlockZ() == event.getTo().getBlockZ()) {
+            return;
+        }
+
+        boolean allowedNow = isResizeAllowed(player);
+
+        Boolean previous = resizeRegionCache.get(player.getUniqueId());
+
+        if (previous != null && previous == allowedNow) {
+            return;
+        }
+
+        resizeRegionCache.put(player.getUniqueId(), allowedNow);
+
+        if (!allowedNow) {
+
+            AttributeInstance scale = player.getAttribute(SCALE_ATTRIBUTE);
+            if (scale != null && scale.getBaseValue() != 1.0) {
+
+                resetSize(player);
+                player.sendMessage(msg("region-size-reset"));
+            }
+        }
+    }
+
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        resizeRegionCache.remove(event.getPlayer().getUniqueId());
+    }
+
 
 }

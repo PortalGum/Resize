@@ -23,3 +23,15 @@ no-permission-target: "&cDu hast keine Berechtigung, die Größe anderer Spieler
 reset-receive: "&eDie Größe wurde beim Erhalten von Schaden zurückgesetzt."
 reset-deal: "&eDie Größe wurde beim Zufügen von Schaden zurückgesetzt."
 world-size-reset: "&eIn dieser Welt darfst du keine veränderte Größe haben. Deine Größe wurde zurückgesetzt."
+
+info-separator: "&8&m-------------------------"
+info-player: "&a&lSpieler: &f{player}"
+info-self: "&a&lDeine Größeninformationen"
+info-current: "&7Aktuell: &f{size}"
+info-min: "&7Min: &f{min}"
+info-max: "&7Max: &f{max}"
+info-min-unlimited: "&7Min: &fkein Limit"
+info-max-unlimited: "&7Max: &fkein Limit"
+
+region-disabled: "&cDu kannst deine Größe in dieser Region nicht ändern."
+region-size-reset: "&eIn dieser Region darfst du keine veränderte Größe haben. Deine Größe wurde zurückgesetzt."

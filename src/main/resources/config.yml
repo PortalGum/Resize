@@ -6,6 +6,7 @@ lang: en
 # Delay for the /resize command (prevents spamming)
 cooldown: 5
 # Plugin prefix
+# HEX colors are supported (format: &#RRGGBB) in config.yml and language files
 prefix: "&e&l[&aResize&e&l]&r "
 
 # Whether to save the player's size after reconnecting
@@ -19,6 +20,7 @@ scale:
 # Animation adds smoothness when changing size
 animation:
   enabled: true
+  # in seconds
   duration: 1
 
 # Settings for resetting player size when taking or dealing damage
@@ -44,6 +46,29 @@ reset-on-damage:
     receive: true
 # Should resets apply to admins with resize.admin permission
 admin-reset: false
+
+# Group size limits using LuckPerms
+# Works only if the LuckPerms plugin is installed
+#
+# enabled: true  — use group-based limits
+# enabled: false — ignore this block and use scale.min and scale.max instead
+#
+# Group names must EXACTLY match the primary group name in LuckPerms
+#
+# You can specify only min or only max:
+# - if a value is missing, the value from the scale section will be used
+group-limits:
+  enabled: false
+  default:
+    min: 0.6
+    max: 1.6
+  vip:
+    min: 0.2
+  titan:
+    max: 3.0
+  premium:
+    min: 0.2
+    max: 2.0
 
 worlds:
   # blacklist / whitelist

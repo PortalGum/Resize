@@ -4,15 +4,35 @@ main: com.resize.Resize
 author: portal_gum
 api-version: 1.20
 
+softdepend: [LuckPerms, WorldGuard]
+
 commands:
   resize:
     usage: /resize <size> [player]
     description: allows changing the player’s size
 
 permissions:
+  resize.*:
+    description: gives access to all Resize plugin permissions
+    default: op
+    children:
+      resize.resize: true
+      resize.info: true
+      resize.info.other: true
+      resize.reload: true
+      resize.admin: true
+
   resize.resize:
     description: allows using the /resize command
     default: true
+
+  resize.info:
+    description: allows using /resize info
+    default: true
+
+  resize.info.other:
+    description: allows viewing other players' size info
+    default: op
 
   resize.admin:
     description: administrator permission (no limits)

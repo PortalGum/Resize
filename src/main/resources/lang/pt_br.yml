@@ -23,3 +23,15 @@ no-permission-target: "&cVocê não tem permissão para alterar o tamanho de out
 reset-receive: "&eO tamanho foi redefinido ao receber dano."
 reset-deal: "&eO tamanho foi redefinido ao causar dano."
 world-size-reset: "&eVocê não pode ter um tamanho modificado neste mundo. Seu tamanho foi redefinido."
+
+info-separator: "&8&m-------------------------"
+info-player: "&a&lJogador: &f{player}"
+info-self: "&a&lInformações do seu tamanho"
+info-current: "&7Atual: &f{size}"
+info-min: "&7Mín: &f{min}"
+info-max: "&7Máx: &f{max}"
+info-min-unlimited: "&7Mín: &fsem limite"
+info-max-unlimited: "&7Máx: &fsem limite"
+
+region-disabled: "&cVocê não pode mudar seu tamanho nesta região."
+region-size-reset: "&eVocê não pode ter um tamanho modificado nesta região. Seu tamanho foi redefinido."

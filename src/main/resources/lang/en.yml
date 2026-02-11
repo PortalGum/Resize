@@ -23,3 +23,15 @@ no-permission-target: "&cYou don't have permission to change other players' size
 reset-receive: "&eYour size was reset because you took damage."
 reset-deal: "&eYour size was reset because you dealt damage."
 world-size-reset: "&eYou cannot have a modified size in this world. Your size has been reset."
+
+info-separator: "&8&m-------------------------"
+info-player: "&a&lPlayer: &f{player}"
+info-self: "&a&lYour size info"
+info-current: "&7Current: &f{size}"
+info-min: "&7Min: &f{min}"
+info-max: "&7Max: &f{max}"
+info-min-unlimited: "&7Min: &fno limit"
+info-max-unlimited: "&7Max: &fno limit"
+
+region-disabled: "&cYou cannot change your size in this region."
+region-size-reset: "&eYou cannot have a modified size in this region. Your size has been reset."
