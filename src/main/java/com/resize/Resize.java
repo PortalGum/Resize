@@ -22,6 +22,8 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
+import org.bstats.bukkit.Metrics;
+import org.bstats.charts.SimplePie;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,6 +69,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
     @Override
     public void onEnable() {
+
         detectScaleAttribute();
 
         if (SCALE_ATTRIBUTE == null) {
@@ -80,6 +83,39 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         getCommand("resize").setExecutor(this);
         getCommand("resize").setTabCompleter(this);
         Bukkit.getPluginManager().registerEvents(this, this);
+
+        // bStats
+        int pluginId = 29522;
+        Metrics metrics = new Metrics(this, pluginId);
+
+        // Group limits enabled / disabled
+        metrics.addCustomChart(new SimplePie("group_limits_enabled", () ->
+                getConfig().getBoolean("group-limits.enabled")
+                        ? "Enabled"
+                        : "Disabled"
+        ));
+
+        // Selected language
+        metrics.addCustomChart(new SimplePie("selected_language", () ->
+                getConfig().getString("lang", "en")
+        ));
+
+        // WorldGuard hook
+        metrics.addCustomChart(new SimplePie("worldguard_hook", () ->
+                getServer().getPluginManager().getPlugin("WorldGuard") != null
+                        ? "Installed"
+                        : "Not Installed"
+        ));
+
+        // Global minimum size
+        metrics.addCustomChart(new SimplePie("global_min_size", () ->
+                String.valueOf(getConfig().getDouble("scale.min", 0.6))
+        ));
+
+        // Global maximum size
+        metrics.addCustomChart(new SimplePie("global_max_size", () ->
+                String.valueOf(getConfig().getDouble("scale.max", 1.6))
+        ));
 
         if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
             worldGuardEnabled = true;

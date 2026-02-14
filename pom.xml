@@ -6,10 +6,10 @@
 
     <groupId>com.resize</groupId>
     <artifactId>Resize</artifactId>
-    <version>1.1</version>
+    <version>1.1.1</version>
     <packaging>jar</packaging>
 
-    <name>resize</name>
+    <name>Resize</name>
 
     <properties>
         <java.version>21</java.version>
@@ -19,6 +19,8 @@
     <build>
         <defaultGoal>clean package</defaultGoal>
         <plugins>
+
+            <!-- Compiler -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -29,10 +31,12 @@
                 </configuration>
             </plugin>
 
+            <!-- Shade -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.5.3</version>
+
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -41,7 +45,17 @@
                         </goals>
                     </execution>
                 </executions>
+
+                <configuration>
+                    <relocations>
+                        <relocation>
+                            <pattern>org.bstats</pattern>
+                            <shadedPattern>com.resize.bstats</shadedPattern>
+                        </relocation>
+                    </relocations>
+                </configuration>
             </plugin>
+
         </plugins>
 
         <resources>
@@ -70,7 +84,8 @@
     </repositories>
 
     <dependencies>
-        <!--Paper API-->
+
+        <!-- Paper API -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
@@ -78,7 +93,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!--LuckPerms-->
+        <!-- LuckPerms API -->
         <dependency>
             <groupId>net.luckperms</groupId>
             <artifactId>api</artifactId>
@@ -93,6 +108,15 @@
             <version>7.0.9</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- bStats (will be shaded & relocated) -->
+        <dependency>
+            <groupId>org.bstats</groupId>
+            <artifactId>bstats-bukkit</artifactId>
+            <version>3.1.0</version>
+            <scope>compile</scope>
+        </dependency>
+
     </dependencies>
 
 </project>
