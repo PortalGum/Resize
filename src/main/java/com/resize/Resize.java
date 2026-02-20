@@ -123,6 +123,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         } else {
             getLogger().info("WorldGuard not found. Resize flag support disabled.");
         }
+        startMobRegionTask();
     }
 
     private void loadLang() {
@@ -159,6 +160,38 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             scale.setBaseValue(1.0);
         }
     }
+
+    private double[] getMobLimits(Player player) {
+
+        double globalMin = getConfig().getDouble("scale.mob_min", 0.5);
+        double globalMax = getConfig().getDouble("scale.mob_max", 2.0);
+
+        if (player.hasPermission("resize.admin")) {
+            return new double[]{globalMin, globalMax};
+        }
+
+        if (!getConfig().getBoolean("group-limits.enabled", false)) {
+            return new double[]{globalMin, globalMax};
+        }
+
+        String group = getPrimaryGroup(player);
+        String path = "group-limits." + group;
+
+        if (!getConfig().contains(path)) {
+            return new double[]{globalMin, globalMax};
+        }
+
+        double min = getConfig().contains(path + ".mob_min")
+                ? getConfig().getDouble(path + ".mob_min")
+                : globalMin;
+
+        double max = getConfig().contains(path + ".mob_max")
+                ? getConfig().getDouble(path + ".mob_max")
+                : globalMax;
+
+        return new double[]{min, max};
+    }
+
 
 
     @Override
@@ -237,7 +270,6 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                 return true;
             }
 
-            double[] limits = getGroupLimits(target);
             boolean isAdmin = target.hasPermission("resize.admin");
 
             viewer.sendMessage(color("&8&m-------------------------"));
@@ -252,14 +284,32 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             viewer.sendMessage(msgNoPrefix("info-current")
                     .replace("{size}", String.valueOf(scale.getBaseValue())));
 
+            // PLAYER LIMITS
             if (isAdmin) {
                 viewer.sendMessage(msgNoPrefix("info-min-unlimited"));
                 viewer.sendMessage(msgNoPrefix("info-max-unlimited"));
             } else {
+                double[] playerLimits = getGroupLimits(target);
+
                 viewer.sendMessage(msgNoPrefix("info-min")
-                        .replace("{min}", String.valueOf(limits[0])));
+                        .replace("{min}", String.valueOf(playerLimits[0])));
                 viewer.sendMessage(msgNoPrefix("info-max")
-                        .replace("{max}", String.valueOf(limits[1])));
+                        .replace("{max}", String.valueOf(playerLimits[1])));
+            }
+
+            // MOB LIMITS
+            viewer.sendMessage(color("&7"));
+
+            if (isAdmin) {
+                viewer.sendMessage(msgNoPrefix("info-mob-min-unlimited"));
+                viewer.sendMessage(msgNoPrefix("info-mob-max-unlimited"));
+            } else {
+                double[] mobLimits = getMobLimits(target);
+
+                viewer.sendMessage(msgNoPrefix("info-mob-min")
+                        .replace("{min}", String.valueOf(mobLimits[0])));
+                viewer.sendMessage(msgNoPrefix("info-mob-max")
+                        .replace("{max}", String.valueOf(mobLimits[1])));
             }
 
             viewer.sendMessage(color("&8&m-------------------------"));
@@ -275,6 +325,95 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                             ? msg("usage-admin")
                             : msg("usage-player")
             );
+            return true;
+        }
+
+        // /resize mob <size>
+        if (args.length >= 2 && args[0].equalsIgnoreCase("mob")) {
+
+            if (!player.hasPermission("resize.mob") && !player.hasPermission("resize.admin")) {
+                player.sendMessage(msg("no-permission"));
+                return true;
+            }
+
+            if (!player.hasPermission("resize.admin") && !isWorldAllowed(player)) {
+                player.sendMessage(msg("world-disabled"));
+                return true;
+            }
+
+            double size;
+            try {
+                size = Double.parseDouble(args[1].replace(',', '.'));
+            } catch (NumberFormatException e) {
+                player.sendMessage(msg("not-number"));
+                return true;
+            }
+
+            size = Math.floor(size * 10.0) / 10.0;
+
+            // if the mob is in the crosshairs
+            double maxDistance = getConfig().getDouble("mob.distance", 7);
+
+            org.bukkit.entity.Entity target = player.getTargetEntity((int) maxDistance);
+
+            if (!(target instanceof org.bukkit.entity.LivingEntity living) || target instanceof Player) {
+                player.sendMessage(msg("mob-not-found"));
+                return true;
+            }
+
+            if (player.getLocation().distance(target.getLocation()) > maxDistance) {
+                player.sendMessage(msg("mob-too-far")
+                        .replace("{distance}", String.valueOf(maxDistance)));
+                return true;
+            }
+
+            double[] limits = getMobLimits(player);
+
+            if (!player.hasPermission("resize.admin")) {
+                if (size < limits[0] || size > limits[1]) {
+                    player.sendMessage(msg("mob-size-limit")
+                            .replace("{min}", String.valueOf(limits[0]))
+                            .replace("{max}", String.valueOf(limits[1])));
+                    return true;
+                }
+            }
+
+            // cooldown (shared)
+            if (!player.hasPermission("resize.admin")) {
+
+                long now = System.currentTimeMillis();
+                long lastUse = cooldowns.getOrDefault(player.getUniqueId(), 0L);
+
+                if (now - lastUse < cooldownSeconds * 1000L) {
+                    long remaining =
+                            ((cooldownSeconds * 1000L) - (now - lastUse)) / 1000;
+
+                    player.sendMessage(msg("cooldown")
+                            .replace("{time}", String.valueOf(remaining)));
+                    return true;
+                }
+
+                cooldowns.put(player.getUniqueId(), now);
+            }
+
+            AttributeInstance scale = living.getAttribute(SCALE_ATTRIBUTE);
+            if (scale == null) {
+                player.sendMessage(msg("no-scale-support"));
+                return true;
+            }
+
+
+            boolean animation = getConfig().getBoolean("animation.enabled", true);
+
+            if (animation) {
+                animateMobScale(living, size);
+            } else {
+                scale.setBaseValue(size);
+            }
+
+            player.sendMessage(msg("mob-resized")
+                    .replace("{size}", String.valueOf(size)));
+
             return true;
         }
 
@@ -457,31 +596,76 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
 
+        if (!(sender instanceof Player player)) {
+            return Collections.emptyList();
+        }
+
+        List<String> list = new ArrayList<>();
+
+        // first arg
         if (args.length == 1) {
-            List<String> list = new ArrayList<>();
 
-            list.add("info");
+            // info
+            if (player.hasPermission("resize.info") || player.hasPermission("resize.admin")) {
+                list.add("info");
+            }
 
-            if (sender.hasPermission("resize.reload")) {
+            // reload
+            if (player.hasPermission("resize.reload")) {
                 list.add("reload");
             }
 
-            double minSize = getConfig().getDouble("scale.min", 0.6);
-            double maxSize = getConfig().getDouble("scale.max", 1.6);
-
-            if (sender instanceof Player p && !p.hasPermission("resize.admin")) {
-                double[] limits = getGroupLimits(p);
-                minSize = limits[0];
-                maxSize = limits[1];
+            // mob
+            if (player.hasPermission("resize.mob") || player.hasPermission("resize.admin")) {
+                list.add("mob");
             }
 
-            list.add(String.valueOf(minSize));
-            list.add(String.valueOf(maxSize));
+            if (player.hasPermission("resize.resize") || player.hasPermission("resize.admin")) {
+
+                double minSize = getConfig().getDouble("scale.min", 0.6);
+                double maxSize = getConfig().getDouble("scale.max", 1.6);
+
+                if (!player.hasPermission("resize.admin")) {
+                    double[] limits = getGroupLimits(player);
+                    minSize = limits[0];
+                    maxSize = limits[1];
+                }
+
+                list.add(String.valueOf(minSize));
+                list.add(String.valueOf(maxSize));
+            }
 
             return list;
         }
 
-        if (args.length == 2 && sender.hasPermission("resize.admin")) {
+        // /resize mob <size>
+        if (args.length == 2 && args[0].equalsIgnoreCase("mob")) {
+
+            if (!player.hasPermission("resize.mob") && !player.hasPermission("resize.admin")) {
+                return Collections.emptyList();
+            }
+
+            double min = getConfig().getDouble("scale.mob_min", 0.5);
+            double max = getConfig().getDouble("scale.mob_max", 2.0);
+
+            if (!player.hasPermission("resize.admin")) {
+                double[] limits = getMobLimits(player);
+                min = limits[0];
+                max = limits[1];
+            }
+
+
+            list.add(String.valueOf(min));
+            list.add(String.valueOf(max));
+
+
+            return list;
+        }
+
+        // /resize <size> <player>
+        if (args.length == 2 && !args[0].equalsIgnoreCase("mob")
+                && (player.hasPermission("resize.admin"))) {
+
             List<String> names = new ArrayList<>();
             for (Player p : Bukkit.getOnlinePlayers()) {
                 names.add(p.getName());
@@ -491,7 +675,6 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
         return Collections.emptyList();
     }
-
 
     private static final Pattern HEX_PATTERN =
             Pattern.compile("&#([A-Fa-f0-9]{6})");
@@ -647,6 +830,43 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         task.runTaskTimer(this, 0L, 1L);
     }
 
+    private void animateMobScale(org.bukkit.entity.LivingEntity entity, double targetScale) {
+
+        AttributeInstance scaleAttr = entity.getAttribute(SCALE_ATTRIBUTE);
+        if (scaleAttr == null) return;
+
+        double start = scaleAttr.getBaseValue();
+        double duration = getConfig().getDouble("animation.duration", 2.0);
+
+        int ticks = Math.max(1, (int) Math.round(duration * 20));
+        double step = (targetScale - start) / ticks;
+
+        new BukkitRunnable() {
+
+            int currentTick = 0;
+
+            @Override
+            public void run() {
+
+                if (!entity.isValid()) {
+                    cancel();
+                    return;
+                }
+
+                currentTick++;
+                double newScale = start + (step * currentTick);
+                scaleAttr.setBaseValue(newScale);
+
+                if (currentTick >= ticks) {
+                    scaleAttr.setBaseValue(targetScale);
+                    cancel();
+                }
+            }
+
+        }.runTaskTimer(this, 0L, 1L);
+    }
+
+
     private Attribute SCALE_ATTRIBUTE;
 
     private void detectScaleAttribute() {
@@ -779,6 +999,31 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         return result;
     }
 
+    private boolean isResizeAllowed(org.bukkit.entity.Entity entity) {
+
+        if (!worldGuardEnabled || RESIZE_FLAG == null) {
+            return true;
+        }
+
+        RegionContainer container = WorldGuard.getInstance()
+                .getPlatform()
+                .getRegionContainer();
+
+        RegionQuery query = container.createQuery();
+
+        ApplicableRegionSet regions = query.getApplicableRegions(
+                BukkitAdapter.adapt(entity.getLocation())
+        );
+
+        Boolean result = regions.queryValue(null, RESIZE_FLAG);
+
+        if (result == null) {
+            return true;
+        }
+
+        return result;
+    }
+
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
 
@@ -812,6 +1057,36 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                 player.sendMessage(msg("region-size-reset"));
             }
         }
+    }
+
+    private void startMobRegionTask() {
+
+        if (!worldGuardEnabled || RESIZE_FLAG == null) return;
+
+        new BukkitRunnable() {
+
+            @Override
+            public void run() {
+
+                for (org.bukkit.World world : Bukkit.getWorlds()) {
+
+                    for (org.bukkit.entity.LivingEntity living : world.getLivingEntities()) {
+
+                        if (living instanceof Player) continue;
+
+                        AttributeInstance scale = living.getAttribute(SCALE_ATTRIBUTE);
+                        if (scale == null) continue;
+
+                        if (scale.getBaseValue() == 1.0) continue;
+
+                        if (!isResizeAllowed(living)) {
+                            scale.setBaseValue(1.0);
+                        }
+                    }
+                }
+            }
+
+        }.runTaskTimer(this, 40L, 40L); // каждые 2 секунды
     }
 
     @EventHandler

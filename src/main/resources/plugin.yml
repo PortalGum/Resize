@@ -1,5 +1,5 @@
 name: Resize
-version: 1.1.1
+version: 1.2.0
 main: com.resize.Resize
 author: portal_gum
 api-version: 1.20
@@ -21,6 +21,7 @@ permissions:
       resize.info.other: true
       resize.reload: true
       resize.admin: true
+      resize.mob: true
 
   resize.resize:
     description: allows using the /resize command
@@ -32,6 +33,10 @@ permissions:
 
   resize.info.other:
     description: allows viewing other players' size info
+    default: op
+
+  resize.mob:
+    description: allows changing mob size
     default: op
 
   resize.admin:
