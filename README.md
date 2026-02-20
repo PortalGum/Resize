@@ -240,6 +240,101 @@ Reload configuration and language files without restarting the server:
 
 ---
 
+## 🔧 Config
+
+```yml
+# Resize plugin configuration
+
+# Language: English: en, Русский: ru, Español: es, Português - Brazil: pt_br, Deutsch: de, Polski: pl
+lang: en
+
+# Delay for the /resize command (prevents spamming)
+cooldown: 5
+# Plugin prefix
+# HEX colors are supported (format: &#RRGGBB) in config.yml and language files
+prefix: "&e&l[&aResize&e&l]&r "
+
+# Whether to save the player's size after reconnecting
+save-sizes: true
+
+# Maximum and minimum size
+scale:
+  min: 0.6
+  max: 1.6
+
+  # Mob limits
+  mob_min: 0.5
+  mob_max: 2.0
+
+# Maximum distance to change mob size
+mob:
+  distance: 7
+
+# Animation adds smoothness when changing size
+animation:
+  enabled: true
+  # in seconds
+  duration: 1
+
+# Settings for resetting player size when taking or dealing damage
+reset-on-damage:
+  player:
+    # If the player dealt damage to another player
+    deal: true
+    # If the player received damage from another player
+    receive: true
+    # If the player dies
+    death: true
+
+  mob:
+    # If the player dealt damage to a mob
+    deal: true
+    # If the player received damage from a mob
+    receive: true
+
+  other:
+    # If the player dealt damage to "other"
+    deal: true
+    # If the player received damage from "other"
+    receive: true
+# Should resets apply to admins with resize.admin permission
+admin-reset: false
+
+# Group size limits using LuckPerms
+# Works only if the LuckPerms plugin is installed
+#
+# enabled: true  — use group-based limits
+# enabled: false — ignore this block and use scale.min and scale.max instead
+#
+# Group names must EXACTLY match the primary group name in LuckPerms
+#
+# You can specify only min or only max:
+# - if a value is missing, the value from the scale section will be used
+group-limits:
+  enabled: false
+  default:
+    min: 0.6
+    max: 1.6
+    mob_min: 0.5
+    mob_max: 2.0
+  vip:
+    min: 0.2
+    mob_max: 3.0
+  titan:
+    max: 3.0
+    mob_min: 0.3
+
+worlds:
+  # blacklist / whitelist
+  mode: blacklist
+  # for example: world_nether, world_the_end
+  list:
+    - spawn
+    - lobby
+```
+
+---
+
 ## 🔐 Permissions
 
 | Permission          | Description                                      |
