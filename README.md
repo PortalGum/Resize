@@ -42,7 +42,6 @@ Features:
 * Supports global and group-based limits
 * Supports smooth animation
 * Fully compatible with WorldGuard regions
-* Works on both Spigot and Paper
 
 ---
 
