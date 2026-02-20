@@ -42,4 +42,5 @@ info-mob-min-unlimited: "&7Minimalny rozmiar moba: &fBez limitu"
 info-mob-max-unlimited: "&7Maksymalny rozmiar moba: &fBez limitu"
 
 region-disabled: "&cNie możesz zmieniać rozmiaru w tym regionie."
+region-disabled-mob: "&cNie możesz zmieniać rozmiaru mobów w tym regionie!"
 region-size-reset: "&eNie możesz mieć zmienionego rozmiaru w tym regionie. Twój rozmiar został zresetowany."

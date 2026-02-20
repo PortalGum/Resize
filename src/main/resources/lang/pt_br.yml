@@ -42,4 +42,5 @@ info-mob-min-unlimited: "&7Tamanho mínimo da criatura: &fIlimitado"
 info-mob-max-unlimited: "&7Tamanho máximo da criatura: &fIlimitado"
 
 region-disabled: "&cVocê não pode mudar seu tamanho nesta região."
+region-disabled-mob: "&cVocê não pode alterar o tamanho dos mobs nesta região!"
 region-size-reset: "&eVocê não pode ter um tamanho modificado nesta região. Seu tamanho foi redefinido."

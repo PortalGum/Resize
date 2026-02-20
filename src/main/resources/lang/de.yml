@@ -42,4 +42,5 @@ info-mob-min-unlimited: "&7Minimale Mob-Größe: &fUnbegrenzt"
 info-mob-max-unlimited: "&7Maximale Mob-Größe: &fUnbegrenzt"
 
 region-disabled: "&cDu kannst deine Größe in dieser Region nicht ändern."
+region-disabled-mob: "&cDu kannst die Größe von Mobs in dieser Region nicht ändern!"
 region-size-reset: "&eIn dieser Region darfst du keine veränderte Größe haben. Deine Größe wurde zurückgesetzt."
