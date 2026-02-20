@@ -14,6 +14,7 @@ import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -37,20 +38,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.LuckPermsProvider;
 
-import com.sk89q.worldguard.WorldGuard;
-import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
-import com.sk89q.worldguard.protection.flags.Flag;
-import com.sk89q.worldguard.protection.flags.StateFlag;
-import com.sk89q.worldguard.protection.flags.registry.FlagRegistry;
-import com.sk89q.worldguard.protection.regions.RegionContainer;
-import com.sk89q.worldguard.protection.regions.RegionQuery;
-import com.sk89q.worldedit.bukkit.BukkitAdapter;
-import com.sk89q.worldguard.protection.ApplicableRegionSet;
-
-
 public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
-
+    private WorldGuardHook worldGuardHook;
     private final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitRunnable> animationTasks = new ConcurrentHashMap<>();
     private final Set<UUID> animating = ConcurrentHashMap.newKeySet();
@@ -67,8 +57,6 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
     }
 
     private FileConfiguration lang;
-    private StateFlag RESIZE_FLAG;
-    private boolean worldGuardEnabled = false;
     private NamespacedKey resizedKey;
 
 
@@ -89,6 +77,14 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         getCommand("resize").setExecutor(this);
         getCommand("resize").setTabCompleter(this);
         Bukkit.getPluginManager().registerEvents(this, this);
+
+        Plugin wg = getServer().getPluginManager().getPlugin("WorldGuard");
+        if (wg != null) {
+            worldGuardHook = new WorldGuardHook(this);
+            getLogger().info("WorldGuard integration enabled.");
+        } else {
+            getLogger().info("WorldGuard not found.");
+        }
 
         // bStats
         int pluginId = 29522;
@@ -123,13 +119,14 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                 String.valueOf(getConfig().getDouble("scale.max", 1.6))
         ));
 
-        if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
-            worldGuardEnabled = true;
-            getLogger().info("WorldGuard detected. Resize flag support enabled.");
-        } else {
-            getLogger().info("WorldGuard not found. Resize flag support disabled.");
-        }
         startMobRegionTask();
+    }
+
+    @Override
+    public void onLoad() {
+        if (getServer().getPluginManager().getPlugin("WorldGuard") != null) {
+            worldGuardHook = new WorldGuardHook(this);
+        }
     }
 
     private void loadLang() {
@@ -344,7 +341,9 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                 return true;
             }
 
-            if (!player.hasPermission("resize.admin") && !isResizeAllowed(living)) {
+            if (!player.hasPermission("resize.admin")
+                    && worldGuardHook != null
+                    && !worldGuardHook.isResizeAllowed(living)) {
                 player.sendMessage(msg("region-disabled-mob"));
                 return true;
             }
@@ -448,7 +447,9 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             return true;
         }
 
-        if (!isAdmin && !isResizeAllowed(target)) {
+        if (!isAdmin
+                && worldGuardHook != null
+                && !worldGuardHook.isResizeAllowed(target)) {
             player.sendMessage(msg("region-disabled"));
             return true;
         }
@@ -910,90 +911,12 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
     }
 
 
-    @Override
-    public void onLoad() {
-
-        if (getServer().getPluginManager().getPlugin("WorldGuard") == null) {
-            return;
-        }
-
-        try {
-            FlagRegistry registry = WorldGuard.getInstance().getFlagRegistry();
-
-            StateFlag flag = new StateFlag("resize", true);
-            registry.register(flag);
-            RESIZE_FLAG = flag;
-
-            getLogger().info("WorldGuard flag registered: resize");
-
-        } catch (Exception e) {
-
-            Flag<?> existing = WorldGuard.getInstance()
-                    .getFlagRegistry()
-                    .get("resize");
-
-            if (existing instanceof StateFlag) {
-                RESIZE_FLAG = (StateFlag) existing;
-                getLogger().info("Using existing WorldGuard flag: resize");
-            }
-        }
-    }
-
-    private boolean isResizeAllowed(Player player) {
-
-        if (!worldGuardEnabled || RESIZE_FLAG == null) {
-            return true;
-        }
-
-        if (player.hasPermission("resize.admin")) {
-            return true;
-        }
-
-        RegionContainer container = WorldGuard.getInstance()
-                .getPlatform()
-                .getRegionContainer();
-
-        RegionQuery query = container.createQuery();
-
-        ApplicableRegionSet regions = query.getApplicableRegions(
-                BukkitAdapter.adapt(player.getLocation())
-        );
-
-        StateFlag.State state = regions.queryState(
-                WorldGuardPlugin.inst().wrapPlayer(player),
-                RESIZE_FLAG
-        );
-
-        return state != StateFlag.State.DENY;
-    }
-
-    private boolean isResizeAllowed(org.bukkit.entity.Entity entity) {
-
-        if (!worldGuardEnabled || RESIZE_FLAG == null) {
-            return true;
-        }
-
-        RegionContainer container = WorldGuard.getInstance()
-                .getPlatform()
-                .getRegionContainer();
-
-        RegionQuery query = container.createQuery();
-
-        ApplicableRegionSet regions = query.getApplicableRegions(
-                BukkitAdapter.adapt(entity.getLocation())
-        );
-
-        StateFlag.State state = regions.queryState(null, RESIZE_FLAG);
-
-        return state != StateFlag.State.DENY;
-    }
-
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
 
         Player player = event.getPlayer();
 
-        if (!worldGuardEnabled || RESIZE_FLAG == null) return;
+        if (worldGuardHook == null) return;
         if (player.hasPermission("resize.admin")) return;
 
         if (event.getFrom().getBlockX() == event.getTo().getBlockX()
@@ -1004,7 +927,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
         if (event.getTo() == null) return;
 
-        boolean allowedNow = isResizeAllowed(player);
+        boolean allowedNow = worldGuardHook.isResizeAllowed(player);
 
         Boolean previous = resizeRegionCache.get(player.getUniqueId());
 
@@ -1068,7 +991,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
     private void startMobRegionTask() {
 
-        if (!worldGuardEnabled || RESIZE_FLAG == null) return;
+        if (worldGuardHook == null) return;
 
         new BukkitRunnable() {
 
@@ -1095,7 +1018,8 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                             continue;
                         }
 
-                        if (!isResizeAllowed(living)) {
+                        if (worldGuardHook != null
+                                && !worldGuardHook.isResizeAllowed(living)) {
                             scale.setBaseValue(1.0);
 
                             // remove mark
