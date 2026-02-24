@@ -339,6 +339,12 @@ worlds:
   list:
     - spawn
     - lobby
+
+# Plugin update checker settings
+update-checker:
+  enabled: true
+  # Notify server operators about new versions when they join
+  notify-ops: true
 ```
 
 ---
