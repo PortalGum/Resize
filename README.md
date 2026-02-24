@@ -18,6 +18,11 @@ Command:
 
 Decimal values are supported (`0.6`, `1.2`, `1.6`, etc.).
 
+To reset the size back to normal, type:
+`/resize reset` (or simply `/resize r`).
+
+This will reset your size or the specified player's size back to 1.0.
+
 ![resize\_sizechange (1)](https://github.com/user-attachments/assets/4b4366c0-e06a-4213-9203-3adf045bea8b)
 
 ---
@@ -29,6 +34,9 @@ Command:
 ```
 /resize mob <size>
 ```
+
+To reset a mob’s size back to its default size, type:
+`/resize mob reset` (or simply `/resize mob r`).
 
 To change a mob's size:
 
