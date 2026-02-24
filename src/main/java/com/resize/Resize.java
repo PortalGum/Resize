@@ -40,13 +40,14 @@ import net.luckperms.api.LuckPermsProvider;
 
 public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
+    private UpdateChecker updateChecker;
     private WorldGuardHook worldGuardHook;
     private final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
     private final Map<UUID, BukkitRunnable> animationTasks = new ConcurrentHashMap<>();
     private final Set<UUID> animating = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Boolean> resizeRegionCache = new ConcurrentHashMap<>();
     private final Set<BukkitRunnable> mobAnimations = ConcurrentHashMap.newKeySet();
-    private String msg(String path) {
+    public String msg(String path) {
         String prefix = color(getConfig().getString("prefix", ""));
         String message = lang.getString(path, "&cMissing lang key: " + path);
         return prefix + color(message);
@@ -64,6 +65,8 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
     public void onEnable() {
 
         detectScaleAttribute();
+        saveDefaultConfig();
+        loadLang();
 
         if (SCALE_ATTRIBUTE == null) {
             getLogger().severe("Disabling plugin: no scale attribute support.");
@@ -71,9 +74,15 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             return;
         }
 
-        saveDefaultConfig();
+        if (getConfig().getBoolean("update-checker.enabled", true)) {
+
+            String projectSlug = "resize_plugin";
+
+            updateChecker = new UpdateChecker(this, projectSlug);
+            getServer().getPluginManager().registerEvents(updateChecker, this);
+        }
+
         resizedKey = new NamespacedKey(this, "resized");
-        loadLang();
         getCommand("resize").setExecutor(this);
         getCommand("resize").setTabCompleter(this);
         Bukkit.getPluginManager().registerEvents(this, this);
@@ -117,6 +126,13 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         // Global maximum size
         metrics.addCustomChart(new SimplePie("global_max_size", () ->
                 String.valueOf(getConfig().getDouble("scale.max", 1.6))
+        ));
+
+        // Update checker enabled / disabled
+        metrics.addCustomChart(new SimplePie("update_checker_enabled", () ->
+                getConfig().getBoolean("update-checker.enabled")
+                        ? "Enabled"
+                        : "Disabled"
         ));
 
         startMobRegionTask();
@@ -300,6 +316,82 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
         boolean isAdmin = player.hasPermission("resize.admin");
 
+        // /resize reset | r [player]
+        if (args.length >= 1 &&
+                (args[0].equalsIgnoreCase("reset")
+                        || args[0].equalsIgnoreCase("r"))) {
+
+            Player target = player;
+
+            if (args.length == 2) {
+
+                if (!player.hasPermission("resize.admin")) {
+                    player.sendMessage(msg("no-permission-target"));
+                    return true;
+                }
+
+                target = Bukkit.getPlayer(args[1]);
+                if (target == null) {
+                    player.sendMessage(msg("player-not-found"));
+                    return true;
+                }
+            }
+
+            if (!isAdmin && !isWorldAllowed(target)) {
+                player.sendMessage(msg("world-disabled"));
+                return true;
+            }
+
+            if (!isAdmin
+                    && worldGuardHook != null
+                    && !worldGuardHook.isResizeAllowed(target)) {
+                player.sendMessage(msg("region-disabled"));
+                return true;
+            }
+
+            AttributeInstance scale = target.getAttribute(SCALE_ATTRIBUTE);
+            if (scale == null) {
+                player.sendMessage(msg("no-scale-support"));
+                return true;
+            }
+
+            if (Math.abs(scale.getBaseValue() - 1.0) < 0.001) {
+
+                if (target == player) {
+                    player.sendMessage(msg("already-this-size"));
+                } else {
+                    player.sendMessage(
+                            msg("player-already-this-size")
+                                    .replace("{player}", target.getName())
+                    );
+                }
+
+                return true;
+            }
+
+            boolean animation = getConfig().getBoolean("animation.enabled", true);
+
+            if (animation) {
+                animateScale(target, 1.0);
+            } else {
+                scale.setBaseValue(1.0);
+            }
+
+            if (target == player) {
+                player.sendMessage(msg("self-resize")
+                        .replace("{size}", "1.0"));
+            } else {
+                player.sendMessage(msg("other-resize")
+                        .replace("{player}", target.getName())
+                        .replace("{size}", "1.0"));
+
+                target.sendMessage(msg("target-message")
+                        .replace("{size}", "1.0"));
+            }
+
+            return true;
+        }
+
         if (args.length < 1) {
             player.sendMessage(
                     player.hasPermission("resize.admin")
@@ -309,7 +401,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             return true;
         }
 
-        // /resize mob <size>
+        // /resize mob <size> | reset
         if (args.length >= 2 && args[0].equalsIgnoreCase("mob")) {
 
             if (!player.hasPermission("resize.mob") && !player.hasPermission("resize.admin")) {
@@ -322,6 +414,44 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                 return true;
             }
 
+            double maxDistance = getConfig().getDouble("mob.distance", 7);
+            org.bukkit.entity.Entity target = player.getTargetEntity((int) maxDistance);
+
+            if (!(target instanceof LivingEntity living) || target instanceof Player) {
+                player.sendMessage(msg("mob-not-found"));
+                return true;
+            }
+
+            AttributeInstance scale = living.getAttribute(SCALE_ATTRIBUTE);
+            if (scale == null) {
+                player.sendMessage(msg("no-scale-support"));
+                return true;
+            }
+
+            // reset
+            if (args[1].equalsIgnoreCase("reset") || args[1].equalsIgnoreCase("r")) {
+
+                if (Math.abs(scale.getBaseValue() - 1.0) < 0.001) {
+                    player.sendMessage(msg("already-this-size"));
+                    return true;
+                }
+
+                boolean animation = getConfig().getBoolean("animation.enabled", true);
+
+                if (animation) {
+                    animateMobScale(living, 1.0);
+                } else {
+                    scale.setBaseValue(1.0);
+                }
+
+                living.getPersistentDataContainer().remove(resizedKey);
+
+                player.sendMessage(msg("mob-resized")
+                        .replace("{size}", "1.0"));
+
+                return true;
+            }
+
             double size;
             try {
                 size = Double.parseDouble(args[1].replace(',', '.'));
@@ -331,22 +461,6 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             }
 
             size = Math.floor(size * 10.0) / 10.0;
-
-            double maxDistance = getConfig().getDouble("mob.distance", 7);
-
-            org.bukkit.entity.Entity target = player.getTargetEntity((int) maxDistance);
-
-            if (!(target instanceof LivingEntity living) || target instanceof Player) {
-                player.sendMessage(msg("mob-not-found"));
-                return true;
-            }
-
-            if (!player.hasPermission("resize.admin")
-                    && worldGuardHook != null
-                    && !worldGuardHook.isResizeAllowed(living)) {
-                player.sendMessage(msg("region-disabled-mob"));
-                return true;
-            }
 
             if (player.getLocation().distance(target.getLocation()) > maxDistance) {
                 player.sendMessage(msg("mob-too-far")
@@ -387,12 +501,6 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                 cooldowns.put(player.getUniqueId(), now);
             }
 
-            AttributeInstance scale = living.getAttribute(SCALE_ATTRIBUTE);
-            if (scale == null) {
-                player.sendMessage(msg("no-scale-support"));
-                return true;
-            }
-
             boolean animation = getConfig().getBoolean("animation.enabled", true);
 
             if (animation) {
@@ -403,7 +511,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
             living.getPersistentDataContainer().set(
                     resizedKey,
-                    org.bukkit.persistence.PersistentDataType.BYTE,
+                    PersistentDataType.BYTE,
                     (byte) 1
             );
 
@@ -412,7 +520,6 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
             return true;
         }
-
 
         double size;
         try {
@@ -634,6 +741,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
                 list.add(String.valueOf(minSize));
                 list.add(String.valueOf(maxSize));
+                list.add("reset");
             }
 
             return list;
@@ -664,6 +772,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
             list.add(String.valueOf(min));
             list.add(String.valueOf(max));
+            list.add("reset");
 
 
             return list;
@@ -686,7 +795,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
     private static final Pattern HEX_PATTERN =
             Pattern.compile("&#([A-Fa-f0-9]{6})");
 
-    private String color(String text) {
+    public String color(String text) {
         if (text == null) return "";
 
         Matcher matcher = HEX_PATTERN.matcher(text);

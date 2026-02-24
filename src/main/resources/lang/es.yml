@@ -44,3 +44,5 @@ info-mob-max-unlimited: "&7Tamaño máximo de la criatura: &fIlimitado"
 region-disabled: "&cNo puedes cambiar tu tamaño en esta región."
 region-disabled-mob: "&c¡No puedes cambiar el tamaño de los mobs en esta región!"
 region-size-reset: "&eNo puedes tener un tamaño modificado en esta región. Tu tamaño fue restablecido."
+
+update-available: "&a¡Nueva versión del plugin disponible! &7(Actual: &c{current}&7 → Última: &a{latest}&7)"

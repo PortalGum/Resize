@@ -44,3 +44,5 @@ info-mob-max-unlimited: "&7Maksymalny rozmiar moba: &fBez limitu"
 region-disabled: "&cNie możesz zmieniać rozmiaru w tym regionie."
 region-disabled-mob: "&cNie możesz zmieniać rozmiaru mobów w tym regionie!"
 region-size-reset: "&eNie możesz mieć zmienionego rozmiaru w tym regionie. Twój rozmiar został zresetowany."
+
+update-available: "&aDostępna jest nowa wersja pluginu! &7(Aktualna: &c{current}&7 → Najnowsza: &a{latest}&7)"
