@@ -177,6 +177,30 @@ These values act as:
 
 ---
 
+## 📦 PlaceholderAPI Support
+
+Resize supports **PlaceholderAPI integration**, allowing you to display player and mob size information in scoreboards, tab lists, chat, and other plugins.
+
+⚠ Requires the **PlaceholderAPI** plugin to be installed.
+
+Available placeholders:
+
+| Placeholder             | Description                                    |
+| ----------------------- | ---------------------------------------------- |
+| `%resize_current_size%` | Displays your current size                     |
+| `%resize_max_size%`     | Displays the maximum size you can increase to  |
+| `%resize_min_size%`     | Displays the minimum size you can decrease to  |
+| `%resize_mob_max%`      | Displays the maximum size you can set for mobs |
+| `%resize_mob_min%`      | Displays the minimum size you can set for mobs |
+
+These placeholders respect:
+
+* global limits
+* group-based limits
+* administrator bypass permissions
+
+---
+
 ## 👑 Administrators
 
 Administrators can:
@@ -351,15 +375,16 @@ update-checker:
 
 ## 🔐 Permissions
 
-| Permission          | Description                                      |
-| ------------------- | ------------------------------------------------ |
-| `resize.resize`     | Allows using `/resize`                           |
-| `resize.mob`        | Allows using `/resize mob`                       |
-| `resize.info`       | Allows using `/resize info`                      |
-| `resize.info.other` | Allows viewing size information of other players |
-| `resize.reload`     | Allows reloading the plugin configuration        |
-| `resize.admin`      | Full bypass of all restrictions                  |
-| `resize.*`          | Grants all Resize permissions                    |
+| Permission            | Description                                      | Default |
+| --------------------- | ------------------------------------------------ | ------- |
+| `resize.resize`       | Allows using `/resize`                           | `true`  |
+| `resize.resize.other` | Allows changing other players' size              | `op`    |
+| `resize.mob`          | Allows using `/resize mob`                       | `op`    |
+| `resize.info`         | Allows using `/resize info`                      | `true`  |
+| `resize.info.other`   | Allows viewing size information of other players | `op`    |
+| `resize.reload`       | Allows reloading the plugin configuration        | `op`    |
+| `resize.admin`        | Full bypass of all restrictions                  | `op`    |
+| `resize.*`            | Grants all Resize permissions                    | `op`    |
 
 ---
 
@@ -367,5 +392,6 @@ update-checker:
 
 * LuckPerms (for group-based limits)
 * WorldGuard (for region resize control)
+* PlaceholderAPI - placeholder support for size values
 
 The plugin works perfectly without them.
