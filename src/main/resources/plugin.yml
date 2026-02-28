@@ -1,10 +1,10 @@
 name: Resize
-version: 1.2.1
+version: 1.2.2
 main: com.resize.Resize
 author: portal_gum
 api-version: 1.20
 
-softdepend: [LuckPerms, WorldGuard]
+softdepend: [LuckPerms, WorldGuard, PlaceholderAPI]
 
 commands:
   resize:
@@ -22,6 +22,7 @@ permissions:
       resize.reload: true
       resize.admin: true
       resize.mob: true
+      resize.resize.other: true
 
   resize.resize:
     description: allows using the /resize command
@@ -33,6 +34,10 @@ permissions:
 
   resize.info.other:
     description: allows viewing other players' size info
+    default: op
+
+  resize.resize.other:
+    description: allows changing other players' size
     default: op
 
   resize.mob:

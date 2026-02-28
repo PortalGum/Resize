@@ -52,7 +52,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         String message = lang.getString(path, "&cMissing lang key: " + path);
         return prefix + color(message);
     }
-    private String msgNoPrefix(String path) {
+    public String msgNoPrefix(String path) {
         String message = lang.getString(path, "&cMissing lang key: " + path);
         return color(message);
     }
@@ -67,6 +67,11 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         detectScaleAttribute();
         saveDefaultConfig();
         loadLang();
+
+        if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new ResizePlaceholder(this).register();
+            getLogger().info("PlaceholderAPI hook enabled.");
+        }
 
         if (SCALE_ATTRIBUTE == null) {
             getLogger().severe("Disabling plugin: no scale attribute support.");
@@ -135,6 +140,13 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                         : "Disabled"
         ));
 
+        // PlaceholderAPI
+        metrics.addCustomChart(new SimplePie("PlaceholderAPI", () ->
+                getServer().getPluginManager().getPlugin("PlaceholderAPI") != null
+                        ? "Installed"
+                        : "Not Installed"
+        ));
+
         startMobRegionTask();
     }
 
@@ -201,10 +213,6 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
         Player player = (Player) sender;
 
-        if (!player.hasPermission("resize.resize")) {
-            return true;
-        }
-
         // /resize reload
         if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
 
@@ -270,10 +278,22 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                     .replace("{size}", String.valueOf(scale.getBaseValue())));
 
             // PLAYER LIMITS
-            if (isAdmin) {
-                viewer.sendMessage(msgNoPrefix("info-min-unlimited"));
-                viewer.sendMessage(msgNoPrefix("info-max-unlimited"));
-            } else {
+            boolean canResize = target.hasPermission("resize.resize");
+            boolean canMob = target.hasPermission("resize.mob");
+
+            if (!canResize) {
+                viewer.sendMessage(msgNoPrefix("info-min")
+                        .replace("{min}", "-"));
+                viewer.sendMessage(msgNoPrefix("info-max")
+                        .replace("{max}", "-"));
+            }
+            else if (isAdmin) {
+                viewer.sendMessage(msgNoPrefix("info-min")
+                        .replace("{min}", msgNoPrefix("unlimited")));
+                viewer.sendMessage(msgNoPrefix("info-max")
+                        .replace("{max}", msgNoPrefix("unlimited")));
+            }
+            else {
                 double[] playerLimits = getLimits(
                         target,
                         "scale.min",
@@ -291,10 +311,19 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             // MOB LIMITS
             viewer.sendMessage(color("&7"));
 
-            if (isAdmin) {
-                viewer.sendMessage(msgNoPrefix("info-mob-min-unlimited"));
-                viewer.sendMessage(msgNoPrefix("info-mob-max-unlimited"));
-            } else {
+            if (!canMob) {
+                viewer.sendMessage(msgNoPrefix("info-mob-min")
+                        .replace("{min}", "-"));
+                viewer.sendMessage(msgNoPrefix("info-mob-max")
+                        .replace("{max}", "-"));
+            }
+            else if (isAdmin) {
+                viewer.sendMessage(msgNoPrefix("info-mob-min")
+                        .replace("{min}", msgNoPrefix("unlimited")));
+                viewer.sendMessage(msgNoPrefix("info-mob-max")
+                        .replace("{max}", msgNoPrefix("unlimited")));
+            }
+            else {
                 double[] mobLimits = getLimits(
                         target,
                         "scale.mob_min",
@@ -521,6 +550,13 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             return true;
         }
 
+        if (!player.hasPermission("resize.resize")
+                && !player.hasPermission("resize.admin")) {
+
+            player.sendMessage(msg("no-permission"));
+            return true;
+        }
+
         double size;
         try {
             size = Double.parseDouble(args[0].replace(',', '.'));
@@ -536,9 +572,11 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
         // if player is specified
         if (args.length >= 2) {
-            if (!isAdmin) {
-                player.sendMessage(msg("no-permission-target"));
 
+            if (!player.hasPermission("resize.resize.other")
+                    && !player.hasPermission("resize.admin")) {
+
+                player.sendMessage(msg("no-permission-target"));
                 return true;
             }
 
@@ -778,9 +816,26 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             return list;
         }
 
+        // /resize info <player>
+        if (args.length == 2 && args[0].equalsIgnoreCase("info")) {
+
+            if (player.hasPermission("resize.info.other")
+                    || player.hasPermission("resize.admin")) {
+
+                List<String> names = new ArrayList<>();
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    names.add(p.getName());
+                }
+                return names;
+            }
+
+            return Collections.emptyList();
+        }
+
         // /resize <size> <player>
         if (args.length == 2 && !args[0].equalsIgnoreCase("mob")
-                && (player.hasPermission("resize.admin"))) {
+                && (player.hasPermission("resize.resize.other")
+                || player.hasPermission("resize.admin"))) {
 
             List<String> names = new ArrayList<>();
             for (Player p : Bukkit.getOnlinePlayers()) {
@@ -1057,7 +1112,13 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
         }
     }
 
-    private double[] getLimits(
+    public double getCurrentSize(Player player) {
+        AttributeInstance scale = player.getAttribute(SCALE_ATTRIBUTE);
+        if (scale == null) return 1.0;
+        return scale.getBaseValue();
+    }
+
+    public double[] getLimits(
             Player player,
             String globalMinPath,
             String globalMaxPath,
