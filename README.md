@@ -193,6 +193,8 @@ Available placeholders:
 | `%resize_mob_max%`      | Displays the maximum size you can set for mobs |
 | `%resize_mob_min%`      | Displays the minimum size you can set for mobs |
 
+<img width="554" height="358" alt="placeholder_example" src="https://github.com/user-attachments/assets/494bffee-e995-45f1-aa0f-eefada0bfca2" />
+
 These placeholders respect:
 
 * global limits
