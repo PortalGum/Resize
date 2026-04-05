@@ -1,7 +1,6 @@
 package com.resize;
 
 import org.bukkit.Bukkit;
-import net.md_5.bungee.api.ChatColor;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -26,6 +25,8 @@ import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Registry;
 import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.RayTraceResult;
+
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
 
@@ -444,12 +445,20 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             }
 
             double maxDistance = getConfig().getDouble("mob.distance", 7);
-            org.bukkit.entity.Entity target = player.getTargetEntity((int) maxDistance);
 
-            if (!(target instanceof LivingEntity living) || target instanceof Player) {
+            RayTraceResult result = player.getWorld().rayTraceEntities(
+                    player.getEyeLocation(),
+                    player.getEyeLocation().getDirection(),
+                    maxDistance,
+                    entity -> entity instanceof LivingEntity && !(entity instanceof Player)
+            );
+
+            if (result == null || result.getHitEntity() == null) {
                 player.sendMessage(msg("mob-not-found"));
                 return true;
             }
+
+            LivingEntity living = (LivingEntity) result.getHitEntity();
 
             AttributeInstance scale = living.getAttribute(SCALE_ATTRIBUTE);
             if (scale == null) {
@@ -473,7 +482,9 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                     scale.setBaseValue(1.0);
                 }
 
-                living.getPersistentDataContainer().remove(resizedKey);
+                if (resizedKey != null) {
+                    living.getPersistentDataContainer().remove(resizedKey);
+                }
 
                 player.sendMessage(msg("mob-resized")
                         .replace("{size}", "1.0"));
@@ -491,7 +502,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
             size = Math.floor(size * 10.0) / 10.0;
 
-            if (player.getLocation().distance(target.getLocation()) > maxDistance) {
+            if (player.getLocation().distance(living.getLocation()) > maxDistance) {
                 player.sendMessage(msg("mob-too-far")
                         .replace("{distance}", String.valueOf(maxDistance)));
                 return true;
@@ -536,6 +547,10 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                 animateMobScale(living, size);
             } else {
                 scale.setBaseValue(size);
+            }
+
+            if (resizedKey == null) {
+                resizedKey = new NamespacedKey(this, "resized");
             }
 
             living.getPersistentDataContainer().set(
@@ -782,7 +797,11 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                 list.add("reset");
             }
 
-            return list;
+            String current = args[0].toLowerCase();
+
+            return list.stream()
+                    .filter(s -> s.toLowerCase().startsWith(current))
+                    .toList();
         }
 
         // /resize mob <size>
@@ -813,7 +832,12 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             list.add("reset");
 
 
-            return list;
+            String current = args[1].toLowerCase();
+
+            return list.stream()
+                    .filter(s -> s.toLowerCase().startsWith(current))
+                    .toList();
+
         }
 
         // /resize info <player>
@@ -826,7 +850,12 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     names.add(p.getName());
                 }
-                return names;
+                String current = args[1].toLowerCase();
+
+                return names.stream()
+                        .filter(name -> name.toLowerCase().startsWith(current))
+                        .toList();
+
             }
 
             return Collections.emptyList();
@@ -841,7 +870,12 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 names.add(p.getName());
             }
-            return names;
+            String current = args[1].toLowerCase();
+
+            return names.stream()
+                    .filter(name -> name.toLowerCase().startsWith(current))
+                    .toList();
+
         }
 
         return Collections.emptyList();
@@ -853,16 +887,24 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
     public String color(String text) {
         if (text == null) return "";
 
-        Matcher matcher = HEX_PATTERN.matcher(text);
-        StringBuffer buffer = new StringBuffer();
+        try {
+            Pattern pattern = Pattern.compile("&#([A-Fa-f0-9]{6})");
+            Matcher matcher = pattern.matcher(text);
+            StringBuffer buffer = new StringBuffer();
 
-        while (matcher.find()) {
-            ChatColor color = ChatColor.of("#" + matcher.group(1));
-            matcher.appendReplacement(buffer, color.toString());
+            while (matcher.find()) {
+                String hex = matcher.group(1);
+                String replacement = net.md_5.bungee.api.ChatColor.of("#" + hex).toString();
+                matcher.appendReplacement(buffer, replacement);
+            }
+
+            matcher.appendTail(buffer);
+            text = buffer.toString();
+        } catch (Throwable ignored) {
+            // if no Bungee API (CraftBukkit)
         }
 
-        matcher.appendTail(buffer);
-        return ChatColor.translateAlternateColorCodes('&', buffer.toString());
+        return org.bukkit.ChatColor.translateAlternateColorCodes('&', text);
     }
 
 
@@ -1174,7 +1216,7 @@ public class Resize extends JavaPlugin implements TabExecutor, Listener {
 
                         if (living instanceof Player) continue;
 
-                        if (!living.getPersistentDataContainer()
+                        if (resizedKey == null || !living.getPersistentDataContainer()
                                 .has(resizedKey, PersistentDataType.BYTE)) {
                             continue;
                         }
