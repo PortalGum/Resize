@@ -293,6 +293,7 @@ save-sizes: true
 
 # Maximum and minimum size
 scale:
+  # Player limits
   min: 0.6
   max: 1.6
 
